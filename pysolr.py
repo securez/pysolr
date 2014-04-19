@@ -900,7 +900,7 @@ class Solr(object):
         # Add content-type to multipart field that need it
         files = {'file': (file_obj.name, file_obj, file_mime)}
         for k in params.keys():
-          files[k] = (None, unicode(params[k]), None if is_ascii(params[k]) else "text/plain;charset=utf-8" )
+          files[k] = (None, params[k], None if is_ascii(params[k]) else "text/plain;charset=utf-8" )
 
         try:
             # We'll provide the file using its true name as Tika may use that
