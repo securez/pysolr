@@ -457,6 +457,39 @@ class SolrTestCase(unittest.TestCase):
         # round-trip:
         self.assertEqual(['Test Title ☃☃'], m['title'])
 
+    def test_extract_param_encoding(self):
+        fake_f = StringIO("""
+            <html>
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="haystack-test" content="test 1234">
+                    <title>Test Title ☃&#x2603;</title>
+                </head>
+                    <body>foobar</body>
+            </html>
+        """)
+        fake_f.name = "test.html"
+        
+        # Insert a doc with extra metadata
+        ascii_value = u'aeiou'
+        nonascii_value = u'áéëíóúüñÁÉËÍÓÚÜ'
+        
+        extracted = self.solr.extract(fake_f, extractOnly=False, **{
+                                        'literal.id': '29A',
+                                        'literal.title': nonascii_value,
+                                        'literal.subject': ascii_value,
+                                        'commit': 'true',
+                                      })
+
+        res = self.solr.search('id:29A')
+        # Check if document are added
+        self.assertEqual(len(res), 1)
+        # Check for ascii and non-ascii values
+        doc = res.docs[0] 
+        self.assertEqual(doc['id'], '29A')
+        self.assertEqual(doc['subject'], ascii_value)
+        self.assertEqual(doc['title'], [nonascii_value])
+
     def test_full_url(self):
         self.solr.url = 'http://localhost:8983/solr/core0'
         full_url = self.solr._create_full_url(path='/update')
