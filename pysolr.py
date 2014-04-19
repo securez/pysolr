@@ -195,6 +195,15 @@ def is_valid_xml_char_ordinal(i):
         or 0xE000 <= i <= 0xFFFD
         or 0x10000 <= i <= 0x10FFFF
         )
+    
+def is_ascii(s):
+    """
+    Checks that all char of string are ascii
+    """
+    try:
+        return all(ord(c) < 128 for c in s)
+    except TypeError:
+        return False
 
 
 def clean_xml_string(s):
@@ -854,7 +863,7 @@ class Solr(object):
 
         return self._update(msg, waitFlush=waitFlush, waitSearcher=waitSearcher)
 
-    def extract(self, file_obj, extractOnly=True, **kwargs):
+    def extract(self, file_obj, file_mime=None, extractOnly=True, **kwargs):
         """
         POSTs a file to the Solr ExtractingRequestHandler so rich content can
         be processed using Apache Tika. See the Solr wiki for details:
@@ -887,13 +896,18 @@ class Solr(object):
             "wt": "json",
         }
         params.update(kwargs)
+        
+        # Add content-type to multipart field that need it
+        files = {'file': (file_obj.name, file_obj, file_mime)}
+        for k in params.keys():
+          files[k] = (None, unicode(params[k]), None if is_ascii(params[k]) else "text/plain;charset=utf-8" )
 
         try:
             # We'll provide the file using its true name as Tika may use that
             # as a file type hint:
             resp = self._send_request('post', 'update/extract',
-                                      body=params,
-                                      files={'file': (file_obj.name, file_obj)})
+                                      body=None,
+                                      files=files)
         except (IOError, SolrError) as err:
             self.log.error("Failed to extract document metadata: %s", err,
                            exc_info=True)
